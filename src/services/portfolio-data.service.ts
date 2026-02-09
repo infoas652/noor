@@ -1,7 +1,7 @@
 
+
 import { Injectable, signal } from '@angular/core';
 import { db } from '../firebase';
-import { doc, onSnapshot, setDoc } from 'firebase/firestore';
 
 export interface PortfolioData {
   name: string;
@@ -43,17 +43,36 @@ export class PortfolioDataService {
 
   private portfolioData = signal<PortfolioData>(this.defaultData);
   public data = this.portfolioData.asReadonly();
-  private docRef = doc(db, 'portfolio', 'main');
+  // FIX: Use v8 compat API to get a document reference.
+  private docRef = db.collection('portfolio').doc('main');
 
   constructor() {
-    onSnapshot(this.docRef, 
+    // FIX: Use onSnapshot method from the document reference (v8 compat API).
+    this.docRef.onSnapshot( 
       (docSnap) => {
-        if (docSnap.exists()) {
-          this.portfolioData.set(docSnap.data() as PortfolioData);
+        // FIX: Use the `exists` property instead of the `exists()` method (v8 compat API).
+        if (docSnap.exists) {
+          const data = docSnap.data();
+          if (data) {
+            // Merge Firestore data with default data to ensure all fields are present
+            // and prevent runtime errors on undefined properties.
+            const safeData: PortfolioData = {
+              ...this.defaultData,
+              ...data,
+              contact: {
+                ...this.defaultData.contact,
+                ...(data.contact || {}),
+              },
+              skills: Array.isArray(data.skills) ? data.skills : this.defaultData.skills,
+              profilePicture: data.profilePicture !== undefined ? data.profilePicture : this.defaultData.profilePicture,
+            };
+            this.portfolioData.set(safeData);
+          }
         } else {
           // Document doesn't exist, create it with default data
           console.log("No portfolio document found. Creating one with default data.");
-          setDoc(this.docRef, this.defaultData);
+          // FIX: Use the `set` method on the document reference (v8 compat API).
+          this.docRef.set(this.defaultData);
           this.portfolioData.set(this.defaultData);
         }
       },
@@ -64,6 +83,7 @@ export class PortfolioDataService {
   }
 
   async updateData(newData: PortfolioData): Promise<void> {
-    await setDoc(this.docRef, newData, { merge: true });
+    // FIX: Use the `set` method on the document reference (v8 compat API).
+    await this.docRef.set(newData, { merge: true });
   }
 }

@@ -32,12 +32,16 @@
     "@angular/router": "https://esm.sh/@angular/router@^21.1.3?external=rxjs",
     "firebase/app": "https://esm.sh/firebase@10.12.2/app",
     "firebase/auth": "https://esm.sh/firebase@10.12.2/auth",
-    "firebase/firestore": "https://esm.sh/firebase@10.12.2/firestore"
+    "firebase/firestore": "https://esm.sh/firebase@10.12.2/firestore",
+    "firebase/compat/firestore": "https://esm.sh/firebase@^12.9.0/compat/firestore?external=rxjs",
+    "firebase/compat/auth": "https://esm.sh/firebase@^12.9.0/compat/auth?external=rxjs",
+    "firebase/compat/app": "https://esm.sh/firebase@^12.9.0/compat/app?external=rxjs"
   }
 }
 </script>
 </head>
 <body class="bg-slate-50 antialiased font-sans">
   <app-root></app-root>
+  <script type="module" src="index.tsx"></script>
 </body>
 </html>

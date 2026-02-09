@@ -1,4 +1,3 @@
-
 import { Component, ChangeDetectionStrategy, inject, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -16,20 +15,37 @@ export class ControlPanelComponent implements OnInit {
   portfolioService = inject(PortfolioDataService);
   authService = inject(AuthService);
   
-  editableData = signal<PortfolioData>({} as PortfolioData);
+  // Initialize with a full, empty structure to prevent template errors
+  editableData: PortfolioData = {
+    name: '',
+    title: '',
+    bio: '',
+    profilePicture: null,
+    contact: {
+      email: '',
+      phone: '',
+      facebook: '',
+      instagram: '',
+      tiktok: '',
+      snapchat: '',
+      discord: '',
+    },
+    skills: [],
+  };
   skillsInput: string = '';
 
   // For credentials change
-  currentPassword = signal('');
-  newUsername = signal(''); // This is for the new email
-  newPassword = signal('');
+  currentPassword = '';
+  newUsername = ''; // This is for the new email
+  newPassword = '';
   credentialUpdateMessage = signal<{text: string, type: 'success' | 'error'} | null>(null);
 
   ngOnInit() {
     const currentData = this.portfolioService.data();
-    this.editableData.set(JSON.parse(JSON.stringify(currentData)));
+    // Deep copy to avoid mutating the service's state directly
+    this.editableData = JSON.parse(JSON.stringify(currentData));
     this.skillsInput = currentData.skills.join(', ');
-    this.newUsername.set(this.authService.username()());
+    this.newUsername = this.authService.username();
   }
 
   handleImageUpload(event: Event): void {
@@ -38,7 +54,10 @@ export class ControlPanelComponent implements OnInit {
       const file = input.files[0];
       const reader = new FileReader();
       reader.onload = (e: any) => {
-        this.editableData.update(data => ({ ...data, profilePicture: e.target.result as string }));
+        // Update the plain object property
+        if (this.editableData) {
+            this.editableData.profilePicture = e.target.result as string;
+        }
       };
       reader.readAsDataURL(file);
     }
@@ -46,31 +65,34 @@ export class ControlPanelComponent implements OnInit {
 
   async saveChanges(): Promise<void> {
     const updatedSkills = this.skillsInput.split(',').map(s => s.trim()).filter(s => s);
-    this.editableData.update(data => ({ ...data, skills: updatedSkills }));
-    await this.portfolioService.updateData(this.editableData());
-    alert('تم حفظ بيانات الملف الشخصي بنجاح!');
+    // Update the plain object property
+    if (this.editableData) {
+        this.editableData.skills = updatedSkills;
+        await this.portfolioService.updateData(this.editableData);
+        alert('تم حفظ بيانات الملف الشخصي بنجاح!');
+    }
   }
 
   async updateCredentials(): Promise<void> {
     this.credentialUpdateMessage.set(null);
 
-    if (!this.currentPassword()) {
+    if (!this.currentPassword) {
        this.credentialUpdateMessage.set({text: 'يرجى إدخال كلمة المرور الحالية.', type: 'error'});
       return;
     }
 
-    if (!this.newUsername()) {
+    if (!this.newUsername) {
        this.credentialUpdateMessage.set({text: 'البريد الإلكتروني الجديد لا يمكن أن يكون فارغًا.', type: 'error'});
       return;
     }
     
-    const passwordToUpdate = this.newPassword() ? this.newPassword() : undefined;
-    const result = await this.authService.updateCredentials(this.currentPassword(), this.newUsername(), passwordToUpdate);
+    const passwordToUpdate = this.newPassword ? this.newPassword : undefined;
+    const result = await this.authService.updateCredentials(this.currentPassword, this.newUsername, passwordToUpdate);
 
     if (result.success) {
       this.credentialUpdateMessage.set({text: result.message, type: 'success'});
-      this.currentPassword.set('');
-      this.newPassword.set('');
+      this.currentPassword = '';
+      this.newPassword = '';
     } else {
       this.credentialUpdateMessage.set({text: result.message, type: 'error'});
     }

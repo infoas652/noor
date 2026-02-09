@@ -1,16 +1,9 @@
-import { Injectable, signal, inject } from '@angular/core';
+import { Injectable, signal, inject, computed } from '@angular/core';
 import { Router } from '@angular/router';
-import { auth } from '../firebase';
-import { 
-  User,
-  signInWithEmailAndPassword, 
-  signOut, 
-  onAuthStateChanged, 
-  updateEmail, 
-  updatePassword,
-  EmailAuthProvider,
-  reauthenticateWithCredential
-} from 'firebase/auth';
+import { firebaseAuth } from '../firebase';
+// FIX: Import firebase compat libraries to use the v8 API.
+import firebase from 'firebase/compat/app';
+import 'firebase/compat/auth';
 
 @Injectable({
   providedIn: 'root'
@@ -18,10 +11,14 @@ import {
 export class AuthService {
   private router: Router = inject(Router);
   private _isAuthenticated = signal<boolean>(false);
-  private currentUser = signal<User | null>(null);
+  // FIX: Use firebase.User as the User type is not exported from 'firebase/auth' when using the compat layer.
+  private currentUser = signal<firebase.User | null>(null);
+
+  username = computed(() => this.currentUser()?.email ?? '');
 
   constructor() {
-    onAuthStateChanged(auth, (user) => {
+    // FIX: Use the onAuthStateChanged method from the firebaseAuth instance (v8 compat API).
+    firebaseAuth.onAuthStateChanged((user) => {
       if (user) {
         this.currentUser.set(user);
         this._isAuthenticated.set(true);
@@ -35,14 +32,11 @@ export class AuthService {
   get isAuthenticated() {
     return this._isAuthenticated.asReadonly();
   }
-  
-  get username() {
-    return signal(this.currentUser()?.email ?? '').asReadonly();
-  }
 
   async login(email: string, password: string): Promise<boolean> {
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      // FIX: Use the signInWithEmailAndPassword method from the firebaseAuth instance (v8 compat API).
+      await firebaseAuth.signInWithEmailAndPassword(email, password);
       return true;
     } catch (error) {
       console.error("Login failed:", error);
@@ -51,7 +45,8 @@ export class AuthService {
   }
 
   async logout(): Promise<void> {
-    await signOut(auth);
+    // FIX: Use the signOut method from the firebaseAuth instance (v8 compat API).
+    await firebaseAuth.signOut();
     this.router.navigate(['/admin']);
   }
 
@@ -62,15 +57,18 @@ export class AuthService {
     }
     
     try {
-      const credential = EmailAuthProvider.credential(user.email, currentPassword);
-      await reauthenticateWithCredential(user, credential);
+      // FIX: Use the v8 compat API for creating credentials and re-authenticating.
+      const credential = firebase.auth.EmailAuthProvider.credential(user.email, currentPassword);
+      await user.reauthenticateWithCredential(credential);
 
       if (newEmail && newEmail !== user.email) {
-        await updateEmail(user, newEmail);
+        // FIX: Use the updateEmail method on the user object (v8 compat API).
+        await user.updateEmail(newEmail);
       }
 
       if (newPassword) {
-        await updatePassword(user, newPassword);
+        // FIX: Use the updatePassword method on the user object (v8 compat API).
+        await user.updatePassword(newPassword);
       }
       
       return { success: true, message: 'تم تحديث بيانات الاعتماد بنجاح!' };

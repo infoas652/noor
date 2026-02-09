@@ -1,4 +1,3 @@
-
 import { Component, ChangeDetectionStrategy, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -13,15 +12,15 @@ import { AuthService } from '../../services/auth.service';
 })
 export class LoginComponent {
   authService = inject(AuthService);
-  // FIX: Explicitly type the injected Router as type inference was failing.
   router: Router = inject(Router);
 
-  username = signal(''); // This is for the user's email
-  password = signal('');
+  username = ''; // This is for the user's email
+  password = '';
   errorMessage = signal<string | null>(null);
 
   async login(): Promise<void> {
-    const success = await this.authService.login(this.username(), this.password());
+    this.errorMessage.set(null);
+    const success = await this.authService.login(this.username, this.password);
     if (success) {
       this.router.navigate(['/admin/dashboard']);
     } else {
